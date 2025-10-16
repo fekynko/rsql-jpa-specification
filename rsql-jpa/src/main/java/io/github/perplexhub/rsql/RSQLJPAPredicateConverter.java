@@ -39,6 +39,7 @@ public class RSQLJPAPredicateConverter extends RSQLVisitorBase<Predicate, From> 
 	private final boolean strictEquality;
 	private final Character likeEscapeCharacter;
     private final JsonbConfiguration jsonbConfiguration;
+    private final Collection<String> jsonTypeConversionExclusions;
 
 	public RSQLJPAPredicateConverter(CriteriaBuilder builder, Map<String, String> propertyPathMapper) {
 		this(builder, propertyPathMapper, null, null);
@@ -64,7 +65,7 @@ public class RSQLJPAPredicateConverter extends RSQLVisitorBase<Predicate, From> 
                                      Collection<String> proceduresBlackList,
                                      boolean strictEquality,
                                      Character likeEscapeCharacter) {
-        this(builder, propertyPathMapper, customPredicates, joinHints, proceduresWhiteList, proceduresBlackList, strictEquality, likeEscapeCharacter, JsonbConfiguration.DEFAULT);
+        this(builder, propertyPathMapper, customPredicates, joinHints, proceduresWhiteList, proceduresBlackList, strictEquality, likeEscapeCharacter, JsonbConfiguration.DEFAULT, null);
     }
 
 	public RSQLJPAPredicateConverter(CriteriaBuilder builder,
@@ -75,19 +76,21 @@ public class RSQLJPAPredicateConverter extends RSQLVisitorBase<Predicate, From> 
                                      Collection<String> proceduresBlackList,
                                      boolean strictEquality,
                                      Character likeEscapeCharacter,
-                                     JsonbConfiguration jsonbConfiguration) {
-		this.builder = builder;
-		this.propertyPathMapper = propertyPathMapper != null ? propertyPathMapper : Collections.emptyMap();
-		this.customPredicates = customPredicates != null ? customPredicates.stream().collect(Collectors.toMap(RSQLCustomPredicate::getOperator, Function.identity(), (a, b) -> a)) : Collections.emptyMap();
-		this.joinHints = joinHints != null ? joinHints : Collections.emptyMap();
-		this.procedureWhiteList = proceduresWhiteList != null ? proceduresWhiteList : Collections.emptyList();
-		this.procedureBlackList = proceduresBlackList != null ? proceduresBlackList : Collections.emptyList();
-		this.strictEquality = strictEquality;
-		this.likeEscapeCharacter = likeEscapeCharacter;
+                                     JsonbConfiguration jsonbConfiguration,
+                                     Collection<String> jsonTypeConversionExclusions) {
+        this.builder = builder;
+        this.propertyPathMapper = propertyPathMapper != null ? propertyPathMapper : Collections.emptyMap();
+        this.customPredicates = customPredicates != null ? customPredicates.stream().collect(Collectors.toMap(RSQLCustomPredicate::getOperator, Function.identity(), (a, b) -> a)) : Collections.emptyMap();
+        this.joinHints = joinHints != null ? joinHints : Collections.emptyMap();
+        this.procedureWhiteList = proceduresWhiteList != null ? proceduresWhiteList : Collections.emptyList();
+        this.procedureBlackList = proceduresBlackList != null ? proceduresBlackList : Collections.emptyList();
+        this.strictEquality = strictEquality;
+        this.likeEscapeCharacter = likeEscapeCharacter;
         this.jsonbConfiguration = jsonbConfiguration;
-	}
+        this.jsonTypeConversionExclusions = jsonTypeConversionExclusions != null ? jsonTypeConversionExclusions : Collections.emptyList();
+    }
 
-	RSQLJPAContext findPropertyPath(String propertyPath, Path startRoot) {
+    RSQLJPAContext findPropertyPath(String propertyPath, Path startRoot) {
         return findPropertyPathInternal(propertyPath, startRoot, true);
 	}
 
@@ -259,7 +262,7 @@ public class RSQLJPAPredicateConverter extends RSQLVisitorBase<Predicate, From> 
 				String jsonbPath = JsonbSupport.jsonPathOfSelector(attribute, jsonSelector);
 				if(jsonbPath.contains(".")) {
 					ComparisonNode jsonbNode = node.withSelector(jsonbPath);
-					return JsonbSupport.jsonbPathExistsExpression(builder, jsonbNode, path, jsonbConfiguration);
+					return JsonbSupport.jsonbPathExistsExpression(builder, jsonbNode, path, jsonbConfiguration, shouldConvertJsonValue(jsonSelector));
 				} else {
 					final Expression expression;
 					if (path instanceof JpaExpression jpaExpression) {
@@ -472,4 +475,8 @@ public class RSQLJPAPredicateConverter extends RSQLVisitorBase<Predicate, From> 
 
 		return result;
 	}
+
+    private boolean shouldConvertJsonValue(String jsonSelector) {
+        return jsonTypeConversionExclusions.isEmpty() || !jsonTypeConversionExclusions.contains(jsonSelector);
+    }
 }

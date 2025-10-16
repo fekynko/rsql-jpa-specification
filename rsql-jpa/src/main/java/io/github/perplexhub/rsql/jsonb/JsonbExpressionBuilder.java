@@ -168,10 +168,10 @@ public class JsonbExpressionBuilder {
     private final List<ArgValue> values;
 
     JsonbExpressionBuilder(ComparisonOperator operator, String keyPath, List<String> args) {
-        this(operator, keyPath, args, JsonbConfiguration.DEFAULT);
+        this(operator, keyPath, args, JsonbConfiguration.DEFAULT, true);
     }
 
-    JsonbExpressionBuilder(ComparisonOperator operator, String keyPath, List<String> args, JsonbConfiguration configuration) {
+    JsonbExpressionBuilder(ComparisonOperator operator, String keyPath, List<String> args, JsonbConfiguration configuration, boolean convertValues) {
         this.operator = Objects.requireNonNull(operator);
         this.keyPath = Objects.requireNonNull(keyPath);
         if(FORBIDDEN_NEGATION.contains(operator)) {
@@ -191,7 +191,7 @@ public class JsonbExpressionBuilder {
             throw new IllegalArgumentException("Operator " + operator + " requires at least one value");
         }
         this.configuration = configuration;
-        this.values = findMoreTypes(operator, candidateValues);
+        this.values = findMoreTypes(operator, candidateValues, convertValues);
     }
 
     /**
@@ -230,10 +230,11 @@ public class JsonbExpressionBuilder {
 
     /**
      * Try to find a more specific type for the given values.
-     * We will keep the original value if we cannot find a more specific type for all values.
+     * We will keep the original value if we cannot find a more specific type for all values, or when conversion is disabled
+     * @param convert enables conversion
      */
-    private List<ArgValue> findMoreTypes(ComparisonOperator operator, List<String> values) {
-        if(NOT_RELEVANT_FOR_CONVERSION.contains(operator)) {
+    private List<ArgValue> findMoreTypes(ComparisonOperator operator, List<String> values, boolean convert) {
+        if(!convert || NOT_RELEVANT_FOR_CONVERSION.contains(operator)) {
             return values.stream().map(s -> new ArgValue(s, BaseJsonType.STRING)).toList();
         }
 
