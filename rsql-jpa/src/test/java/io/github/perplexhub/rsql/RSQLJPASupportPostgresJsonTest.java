@@ -86,6 +86,27 @@ class RSQLJPASupportPostgresJsonTest {
     }
 
     @ParameterizedTest
+    @MethodSource("excludeConversionData")
+    void testExcludeConversionData(List<PostgresJsonEntity> entities, String rsql, List<PostgresJsonEntity> expected) {
+        //given
+        repository.saveAllAndFlush(entities);
+
+        //when
+        List<PostgresJsonEntity> result = repository.findAll(toSpecification(QuerySupport.builder()
+                .rsqlQuery(rsql)
+                .jsonTypeConversionExclusions(List.of("properties.a"))
+                .build()));
+
+        //then
+        assertThat(result)
+                .hasSameSizeAs(expected)
+                .containsExactlyInAnyOrderElementsOf(expected);
+
+        entities.forEach(e -> e.setId(null));
+    }
+
+
+    @ParameterizedTest
     @MethodSource("temporalData")
     void testJsonSearchOfTemporal(List<PostgresJsonEntity> entities, String rsql, List<PostgresJsonEntity> expected) {
         //given
@@ -461,6 +482,50 @@ class RSQLJPASupportPostgresJsonTest {
                 arguments(allCases, "properties.a1==-3.14", List.of(e7)),
                 null
         ).filter(Objects::nonNull);
+    }
+
+    static Stream<Arguments> excludeConversionNumberData() {
+        var e1 = new PostgresJsonEntity(Map.of("a", "1"));
+        var e2 = new PostgresJsonEntity(Map.of("a", "2"));
+        var e3 = new PostgresJsonEntity(Map.of("a", "3"));
+        var e4 = new PostgresJsonEntity(Map.of("a", "3.14"));
+        var e5 = new PostgresJsonEntity(Map.of("a", "42"));
+        var e6 = new PostgresJsonEntity(Map.of("a", "-10"));
+        var e7 = new PostgresJsonEntity(Map.of("a", "-3.14"));
+        var allCases = List.of(e1, e2, e3, e4, e5, e6, e7);
+        return Stream.of(
+                arguments(allCases, "properties.a==1", List.of(e1)),
+                arguments(allCases, "properties.a==42", List.of(e5)),
+                arguments(allCases, "properties.a=in=(1,2)", List.of(e1, e2)),
+                arguments(allCases, "properties.a=out=(1,2)", List.of(e3, e4, e5, e6, e7)),
+                arguments(allCases, "properties.a==-3.14", List.of(e7)),
+                null
+        ).filter(Objects::nonNull);
+    }
+
+    private static Stream<Arguments> excludeConversionBooleanData() {
+        var e1 = new PostgresJsonEntity(Map.of("a", "true"));
+        var e2 = new PostgresJsonEntity(Map.of("a", "false"));
+        var e3 = new PostgresJsonEntity(Map.of("a", "true"));
+        var e4 = new PostgresJsonEntity(Map.of("a", "false"));
+        var e5 = new PostgresJsonEntity(nullMap("a"));
+        var e6 = new PostgresJsonEntity(Map.of("b", "other"));
+        var allCases = List.of(e1, e2, e3, e4, e5, e6);
+        return Stream.of(
+                arguments(allCases, "properties.a==true", List.of(e1, e3)),
+                arguments(allCases, "properties.a==false", List.of(e2, e4)),
+                arguments(allCases, "properties.a!=true", List.of(e2, e4, e5, e6)),
+                arguments(allCases, "properties.a!=false", List.of(e1, e3, e5, e6)),
+                null
+        ).filter(Objects::nonNull);
+    }
+
+    static Stream<Arguments> excludeConversionData() {
+        return Stream.of(
+                excludeConversionBooleanData(),
+                excludeConversionNumberData(),
+                null
+        ).filter(Objects::nonNull).flatMap(s -> s);
     }
 
     protected static Stream<Arguments> dateData() {

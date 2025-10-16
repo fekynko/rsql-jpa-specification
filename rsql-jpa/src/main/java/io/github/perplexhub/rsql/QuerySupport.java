@@ -29,12 +29,13 @@ public class QuerySupport {
     private Collection<String> procedureBlackList;
     @Builder.Default
     private JsonbConfiguration jsonbConfiguration = JsonbConfiguration.DEFAULT;
+    private Collection<String> jsonTypeConversionExclusions;
 
     public static class QuerySupportBuilder {}
 
     @Override
     public String toString() {
-        return String.format("%s,distinct:%b,propertyPathMapper:%s,customPredicates:%d,joinHints:%s,propertyWhitelist:%s,propertyBlacklist:%s,jsonbConfiguration:%s",
-                rsqlQuery, distinct, propertyPathMapper, customPredicates == null ? 0 : customPredicates.size(), joinHints, propertyWhitelist, propertyBlacklist, jsonbConfiguration);
+        return String.format("%s,distinct:%b,propertyPathMapper:%s,customPredicates:%d,joinHints:%s,propertyWhitelist:%s,propertyBlacklist:%s,jsonbConfiguration:%s,jsonTypeConversionExclusions:%s",
+                rsqlQuery, distinct, propertyPathMapper, customPredicates == null ? 0 : customPredicates.size(), joinHints, propertyWhitelist, propertyBlacklist, jsonbConfiguration, jsonTypeConversionExclusions);
     }
 }
