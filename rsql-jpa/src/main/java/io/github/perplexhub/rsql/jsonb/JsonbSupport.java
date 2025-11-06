@@ -19,6 +19,8 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.ManagedType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.orm.jpa.vendor.Database;
 
 /**
@@ -99,12 +101,26 @@ public class JsonbSupport {
      * @return true if the attribute is a jsonb attribute
      */
     private static boolean isJsonColumn(Attribute<?, ?> attribute) {
+        return isJsonbColumn(attribute) || isJdbcTypeCodeJSON(attribute);
+    }
+
+    private static boolean isJsonbColumn(Attribute<?, ?> attribute) {
         return Optional.ofNullable(attribute)
                 .filter(attr -> attr.getJavaMember() instanceof Field)
                 .map(attr -> ((Field) attr.getJavaMember()))
                 .map(field -> field.getAnnotation(Column.class))
                 .map(Column::columnDefinition)
                 .map("jsonb"::equalsIgnoreCase)
+                .orElse(false);
+    }
+
+    private static boolean isJdbcTypeCodeJSON(Attribute<?, ?> attribute) {
+        return Optional.ofNullable(attribute)
+                .filter(attr -> attr.getJavaMember() instanceof Field)
+                .map(attr -> ((Field) attr.getJavaMember()))
+                .map(field -> field.getAnnotation(JdbcTypeCode.class))
+                .map(JdbcTypeCode::value)
+                .map(code -> SqlTypes.JSON == code)
                 .orElse(false);
     }
 
